@@ -81,7 +81,6 @@ def read_current_holdings():
         df.to_csv(filename)
     current_holdings = pd.DataFrame(df[df.columns[-1]])
     current_holdings.index = df.index
-    print(current_holdings)
     return current_holdings
 
 def get_conversion_rate(from_currency, to_currency):
