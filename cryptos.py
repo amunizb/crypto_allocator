@@ -127,15 +127,19 @@ def ignore(top_coins, sequential='no'):
     total_marketcap = total(top_coins, 'marketcap')
     total_holding = total(top_coins, 'current_holding')
 
+    
+
     for c in top_coins:
         c.weight = c.marketcap/total_marketcap
+        
 
     #Start elimination
-    while min(amounts_to_add)<10 and len(top_coins)>0:
+    while len(top_coins) > 0 and min(amounts_to_add) < 10:
         # Calculate the required investments to reach the minimum threshold for each coin
         investments_needed = [(c.current_holding + cut_off) / c.weight - total_holding for c in top_coins] 
         minimun_investment_needed = max(investments_needed) # The most problematic coin
         k = investments_needed.index(minimun_investment_needed)  # Locate problematic coin
+        
 
         if sequential == "yes":
             # THIS PART OF THE CODE WON'T WORK
@@ -169,12 +173,16 @@ def ignore(top_coins, sequential='no'):
             del top_coins[k]
             total_marketcap = total(top_coins, 'marketcap')
             total_holding = total(top_coins, 'current_holding')
-            total_weight = total(top_coins, 'weight')
+            
             for c in top_coins:
                 c.weight = c.marketcap/total_marketcap
+
+            total_weight = total(top_coins, 'weight')
+            for c in top_coins:
                 c.amount_to_add += pool * c.weight / total_weight
         else:
             print("Sorry I did not understand you.")
+        
         amounts_to_add = [c.amount_to_add for c in top_coins]
     return top_coins
 
@@ -188,12 +196,13 @@ def update_current_holdings(top_coins):
     # Load the existing CSV file into a DataFrame
     file_path = 'data/my_holdings.csv'  # Replace with your CSV file path
     df = pd.read_csv(file_path, index_col='Name')
+    col_number = len(df.columns)
 
     current_date = date.today()
 
     # List of coin names and corresponding values
-    coins = [c.name for c in top_coins]  # Replace with your list of coin names
-    coin_values = [(c.amount_to_add + c.current_holding)/c.price for c in top_coins]  # Replace with corresponding values (recall c.current_holding is in USD)
+    coins = [c.name for c in top_coins]
+    coin_values = [(c.amount_to_add + c.current_holding)/c.price for c in top_coins] #(recall c.current_holding is in USD)
 
     # Create a dictionary from the list of coins and their values
     coin_dict = dict(zip(coins, coin_values))
@@ -205,8 +214,8 @@ def update_current_holdings(top_coins):
             df.loc[coin, current_date] = coin_dict[coin] 
         else:
             # If the coin does not exist, create a new row
-            new_row = [coin] + [0] * (len(df.columns) - 1) + [coin_dict[coin]]  # First column is coin name, rest are 0s
-            df.loc[len(df)] = new_row  # Append the new row to the DataFrame
+            new_row = [0] * col_number + [coin_dict[coin]]  # First column is coin name, rest are 0s
+            df.loc[coin] = new_row  # Append the new row to the DataFrame
 
     # Copy the last column's values to the next column for rows that haven't been modified
     df[df.columns[-1]] = df[df.columns[-1]].fillna(df[df.columns[-2]])
@@ -237,7 +246,9 @@ for c in top_coins:
         c.current_holding = current_holding_c * c.price
     else:
         c.current_holding = 0
-
+print("Your current holdings are: ")
+for c in top_coins:
+    print(f"{c.name}: ${round(c.current_holding, 2)}")
 investment  = input("How much money are you adding this month (in GBP)? ")
 # Compute investment in USD
 investment = float(investment) * get_conversion_rate('GBP','USD')
@@ -250,10 +261,11 @@ for c in top_coins:
     quantity = (c.marketcap/total_marketcap) * (total_holding+investment) - c.current_holding #Amount to add/sell according to current holding and marketcap weight
     c.amount_to_add = quantity
 
+print(f'Original amount to buy = {sum(c.amount_to_add for c in top_coins)}\n')
 #  #Decide between sequential or full (all at once) elimination
 # sequential = input("Would you like to see a sequential elimination? (yes/no)")
 top_coins = ignore(top_coins) #Eliminate iteratively all coins with abs(amount_to_add) less than 10, asking first whether we want to increase investment
-
 print_amounts_to_buy()
+
 
 update_current_holdings(top_coins)
